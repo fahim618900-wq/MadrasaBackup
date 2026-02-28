@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SQLite DB Viewer</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+
+<style>
+body{
+    font-family: Arial;
+    background:#f4f6f9;
+    padding:20px;
+}
+
+h2{
+    text-align:center;
+}
+
+button{
+    padding:10px 18px;
+    border:none;
+    background:#007bff;
+    color:white;
+    border-radius:6px;
+    cursor:pointer;
+}
+
+.table-box{
+    background:white;
+    padding:15px;
+    margin-top:20px;
+    border-radius:8px;
+    box-shadow:0 2px 8px rgba(0,0,0,.1);
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    margin-top:10px;
+}
+
+th,td{
+    border:1px solid #ddd;
+    padding:8px;
+}
+
+th{
+    background:#007bff;
+    color:white;
+}
+</style>
+</head>
+
+<body>
+
+<h2>📂 Madrasa Database Structure</h2>
+
+<button onclick="loadDB()">Load Database</button>
+
+<div id="output"></div>
+
+<script>
+async function loadDB(){
+
+    const SQL = await initSqlJs({
+        locateFile: file =>
+        "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/" + file
+    });
+
+    const response = await fetch("madrasa.db");
+    const buffer = await response.arrayBuffer();
+
+    const db = new SQL.Database(new Uint8Array(buffer));
+
+    let output = document.getElementById("output");
+    output.innerHTML = "";
+
+    // সব table বের করা
+    const tables = db.exec(
+        "SELECT name FROM sqlite_master WHERE type='table'"
+    );
+
+    if(!tables.length){
+        output.innerHTML="No tables found";
+        return;
+    }
+
+    tables[0].values.forEach(t => {
+
+        let tableName = t[0];
+
+        // column info
+        let columns = db.exec(
+            `PRAGMA table_info(${tableName});`
+        );
+
+        let html = `
+        <div class="table-box">
+        <h3>Table: ${tableName}</h3>
+        <table>
+        <tr>
+        <th>Column ID</th>
+        <th>Name</th>
+        <th>Type</th>
+        </tr>
+        `;
+
+        columns[0].values.forEach(col=>{
+            html+=`
+            <tr>
+            <td>${col[0]}</td>
+            <td>${col[1]}</td>
+            <td>${col[2]}</td>
+            </tr>`;
+        });
+
+        html+="</table></div>";
+
+        output.innerHTML+=html;
+    });
+}
+</script>
+
+</body>
+</html>
