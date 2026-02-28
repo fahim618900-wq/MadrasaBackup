@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 
-<title>Student Profile & Receipt</title>
+<title>Madrasa Student Search</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600&display=swap" rel="stylesheet">
 
@@ -18,60 +18,81 @@ body{
 background:#003d3d;
 display:flex;
 justify-content:center;
-padding:10px;
 }
 
 .app{
 width:100%;
 max-width:412px;
-background:white;
-padding:15px;
-border-radius:12px;
+background:#f4f4f4;
+min-height:100vh;
 }
 
-h2{text-align:center;margin-bottom:10px;}
+/* ---------- STICKY SEARCH ---------- */
+.search-box{
+position:sticky;
+top:0;
+background:white;
+padding:12px;
+z-index:100;
+box-shadow:0 2px 6px rgba(0,0,0,.2);
+}
 
-input{
+select,input{
 width:100%;
 padding:10px;
-border:1px solid #ccc;
+margin-top:6px;
 border-radius:6px;
-margin-bottom:12px;
+border:1px solid #ccc;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+background:white;
+margin-top:10px;
+}
+
+th,td{
+border:1px solid #ddd;
+padding:8px;
+font-size:14px;
+}
+
+th{
+background:#004d40;
+color:white;
+}
+
+tr:hover{
+background:#e0f2f1;
+cursor:pointer;
+}
+
+.profile{
+background:white;
+margin:10px;
+padding:15px;
+border-radius:10px;
+border:2px solid #004d40;
+}
+
+img{
+width:120px;
+display:block;
+margin:auto;
+margin-bottom:10px;
+border-radius:8px;
 }
 
 button{
+width:100%;
 padding:10px;
 background:#004d40;
 color:white;
 border:none;
 border-radius:6px;
-cursor:pointer;
 margin-top:10px;
-}
-
-.form{
-border:2px solid #004d40;
-padding:12px;
-border-radius:10px;
-}
-
-.row{
-margin:6px 0;
-font-size:14px;
-}
-
-img{
-width:120px;
-border-radius:8px;
-display:block;
-margin:auto;
-margin-bottom:10px;
-}
-
-.title{
-text-align:center;
-font-weight:bold;
-margin-bottom:8px;
+cursor:pointer;
 }
 </style>
 </head>
@@ -80,18 +101,28 @@ margin-bottom:8px;
 
 <div class="app">
 
-<h2>Student Information</h2>
+<!-- SEARCH AREA -->
+<div class="search-box">
 
-<input id="search" placeholder="Student ID / Name লিখুন">
+<select id="classSelect"></select>
 
-<div id="result"></div>
+<input id="searchInput"
+placeholder="শুধু ছাত্রের নাম লিখুন">
+
+</div>
+
+<!-- RESULT TABLE -->
+<div id="tableArea"></div>
+
+<!-- PROFILE -->
+<div id="profileArea"></div>
 
 </div>
 
 <script>
 let db;
 
-/* ---------- LOAD DATABASE ---------- */
+/* ---------- LOAD DB ---------- */
 (async()=>{
 
 const SQL=await initSqlJs({
@@ -103,30 +134,84 @@ let buf=await res.arrayBuffer();
 
 db=new SQL.Database(new Uint8Array(buf));
 
+initClasses();
+
 })();
 
-/* ---------- SEARCH ---------- */
-document.getElementById("search")
-.oninput=function(){
-
-let txt=this.value.toLowerCase();
-
-if(!txt)return;
+/* ---------- LOAD CLASSES ---------- */
+function initClasses(){
 
 let data=db.exec(
-"SELECT * FROM students"
+"SELECT DISTINCT class FROM students"
 )[0].values;
 
-let student=data.find(r=>
-r[0].toLowerCase().includes(txt) ||
-r[1].toLowerCase().includes(txt)
+let sel=document.getElementById("classSelect");
+
+sel.innerHTML="<option value=''>Select Class</option>";
+
+data.forEach(c=>{
+sel.innerHTML+=`<option>${c[0]}</option>`;
+});
+}
+
+/* ---------- SEARCH ---------- */
+document.getElementById("searchInput")
+.oninput=function(){
+
+let name=this.value.toLowerCase();
+let cls=document.getElementById("classSelect").value;
+
+if(!cls || !name)return;
+
+let rows=db.exec(
+"SELECT student_id,name,father_name,class,mobile FROM students"
+)[0].values;
+
+let match=rows.filter(r=>
+r[3]==cls &&
+r[1].toLowerCase().includes(name)
 );
 
-if(student)showStudent(student);
+renderTable(match);
 };
 
-/* ---------- SHOW STUDENT ---------- */
-function showStudent(r){
+/* ---------- TABLE ---------- */
+function renderTable(data){
+
+let html=`
+<table>
+<tr>
+<th>ID</th>
+<th>Name</th>
+<th>Father</th>
+<th>Class</th>
+<th>Mobile</th>
+</tr>
+`;
+
+data.forEach(r=>{
+html+=`
+<tr onclick="showProfile('${r[0]}')">
+<td>${r[0]}</td>
+<td>${r[1]}</td>
+<td>${r[2]}</td>
+<td>${r[3]}</td>
+<td>${r[4]}</td>
+</tr>`;
+});
+
+html+="</table>";
+
+document.getElementById("tableArea").innerHTML=html;
+document.getElementById("profileArea").innerHTML="";
+}
+
+/* ---------- PROFILE ---------- */
+function showProfile(id){
+
+let r=db.exec(
+`SELECT * FROM students WHERE student_id='${id}'`
+)[0].values[0];
 
 let img="";
 
@@ -138,41 +223,40 @@ blob.reduce((d,b)=>d+String.fromCharCode(b),'')
 img=`<img src="data:image/jpeg;base64,${base64}">`;
 }
 
-document.getElementById("result").innerHTML=`
+document.getElementById("profileArea").innerHTML=`
 
-<div id="receiptArea" class="form">
+<div id="receiptBox" class="profile">
 
-<div class="title">Madrasa Student Profile</div>
+<h3 style="text-align:center">Student Profile</h3>
 
 ${img}
 
-<div class="row"><b>ID:</b> ${r[0]}</div>
-<div class="row"><b>Name:</b> ${r[1]}</div>
-<div class="row"><b>Father:</b> ${r[2]}</div>
-<div class="row"><b>Address:</b> ${r[3]}</div>
-<div class="row"><b>Class:</b> ${r[4]}</div>
-<div class="row"><b>Mobile:</b> ${r[5]}</div>
+<b>ID:</b> ${r[0]}<br>
+<b>Name:</b> ${r[1]}<br>
+<b>Father:</b> ${r[2]}<br>
+<b>Address:</b> ${r[3]}<br>
+<b>Class:</b> ${r[4]}<br>
+<b>Mobile:</b> ${r[5]}
 
 </div>
 
-<button onclick="downloadPDF()">🔥 Download Receipt PDF</button>
+<button onclick="downloadPDF()">🔥 Download PDF</button>
 `;
+
+window.scrollTo({top:500,behavior:"smooth"});
 }
 
-/* ---------- PDF DOWNLOAD ---------- */
+/* ---------- PDF ---------- */
 function downloadPDF(){
-
-let element=document.getElementById("receiptArea");
 
 html2pdf()
 .set({
 margin:5,
 filename:"Student_Profile.pdf",
-image:{type:'jpeg',quality:1},
 html2canvas:{scale:2},
-jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
+jsPDF:{unit:'mm',format:'a4'}
 })
-.from(element)
+.from(document.getElementById("receiptBox"))
 .save();
 }
 </script>
