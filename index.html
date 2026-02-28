@@ -3,10 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Madrasa WhatsApp Submit</title>
+<title>Madrasa Student WhatsApp Submit</title>
+
 <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Hind Siliguri';}
 body{background:#003d3d;display:flex;justify-content:center;padding:10px;}
@@ -22,47 +24,65 @@ img{width:120px;display:block;margin:auto;margin-bottom:10px;border-radius:8px;}
 button{width:100%;padding:10px;background:#004d40;color:white;border:none;border-radius:6px;margin-top:10px;cursor:pointer;}
 </style>
 </head>
+
 <body>
 <div class="app">
 
+<!-- SEARCH -->
 <div class="search-box">
 <select id="classSelect"></select>
 <input id="searchInput" placeholder="শুধু ছাত্রের নাম লিখুন">
 </div>
 
+<!-- MULTI-MATCH TABLE -->
 <div id="tableArea"></div>
+
+<!-- PROFILE FORM -->
 <div id="profileArea"></div>
 
 </div>
 
 <script>
 let db;
+
+// ----------- LOAD DB -----------
 (async()=>{
-const SQL=await initSqlJs({locateFile:f=>"https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/"+f});
-let res=await fetch("madrasa.db");
-let buf=await res.arrayBuffer();
-db=new SQL.Database(new Uint8Array(buf));
+const SQL = await initSqlJs({locateFile:f=>"https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/"+f});
+let res = await fetch("madrasa.db");
+let buf = await res.arrayBuffer();
+db = new SQL.Database(new Uint8Array(buf));
 initClasses();
 })();
 
+// ----------- LOAD CLASSES -----------
 function initClasses(){
-let data=db.exec("SELECT DISTINCT class FROM students")[0].values;
-let sel=document.getElementById("classSelect");
-sel.innerHTML="<option value=''>Select Class</option>";
-data.forEach(c=>{sel.innerHTML+=`<option>${c[0]}</option>`;});
+let data = db.exec("SELECT DISTINCT class FROM students")[0].values;
+let sel = document.getElementById("classSelect");
+sel.innerHTML = "<option value=''>সব ক্লাস</option>";
+data.forEach(c => { sel.innerHTML += `<option>${c[0]}</option>`; });
 }
 
-document.getElementById("searchInput").oninput=function(){
-let name=this.value.toLowerCase();
-let cls=document.getElementById("classSelect").value;
-if(!cls || !name)return;
+// ----------- SEARCH HANDLER -----------
+document.getElementById("searchInput").oninput = function(){
+let name = this.value.toLowerCase();
+let cls = document.getElementById("classSelect").value.toLowerCase();
 
-let rows=db.exec("SELECT student_id,name,father_name,address,class,mobile,image FROM students")[0].values;
-let match=rows.filter(r=>r[3]==cls && r[1].toLowerCase().includes(name));
+if(!name){ document.getElementById("tableArea").innerHTML=""; return; }
+
+let rows = db.exec("SELECT student_id,name,father_name,address,class,mobile,image FROM students")[0].values;
+
+let match = rows.filter(r=>{
+    let rowClass = r[4] ? r[4].toString().toLowerCase() : '';
+    let nameMatch = r[1] ? r[1].toLowerCase().includes(name) : false;
+    return (cls==="" || rowClass===cls) && nameMatch;
+});
+
 renderTable(match);
 };
 
+// ----------- RENDER MULTI-MATCH TABLE -----------
 function renderTable(data){
+if(!data.length){ document.getElementById("tableArea").innerHTML="<p style='padding:10px'>কোনো মিল পাওয়া যায়নি</p>"; return; }
 let html="<table><tr><th>ID</th><th>Name</th><th>Father</th><th>Class</th><th>Mobile</th></tr>";
 data.forEach(r=>{
 html+=`<tr onclick="showProfile('${r[0]}')"><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[4]}</td><td>${r[5]}</td></tr>`;
@@ -72,16 +92,17 @@ document.getElementById("tableArea").innerHTML=html;
 document.getElementById("profileArea").innerHTML="";
 }
 
+// ----------- SHOW PROFILE FORM -----------
 function showProfile(id){
-let r=db.exec(`SELECT * FROM students WHERE student_id='${id}'`)[0].values[0];
-let img="";
+let r = db.exec(`SELECT * FROM students WHERE student_id='${id}'`)[0].values[0];
+let img = "";
 if(r[6]){
-let blob=new Uint8Array(r[6]);
-let base64=btoa(blob.reduce((d,b)=>d+String.fromCharCode(b),''));
-img=`<img src="data:image/jpeg;base64,${base64}" id="profileImage">`;
+let blob = new Uint8Array(r[6]);
+let base64 = btoa(blob.reduce((d,b)=>d+String.fromCharCode(b),''));
+img = `<img src="data:image/jpeg;base64,${base64}" id="profileImage">`;
 }
 document.getElementById("profileArea").innerHTML=`
-<div class="profile">
+<div class="profile" id="receiptBox">
 <h3 style="text-align:center">Student Profile</h3>
 ${img}
 <input id="name" value="${r[1]}">
@@ -95,6 +116,7 @@ ${img}
 window.scrollTo({top:500,behavior:"smooth"});
 }
 
+// ----------- SUBMIT TO WHATSAPP -----------
 function submitWhatsApp(student_id){
 let student = {
 student_id,
@@ -112,14 +134,17 @@ headers:{"Content-Type":"application/json"},
 body:JSON.stringify(student)
 })
 .then(r=>r.json())
-.then(d=>alert("Sent to WhatsApp ✅"));
+.then(d=>alert("Sent to WhatsApp ✅"))
+.catch(e=>alert("Error sending WhatsApp: "+e));
 }
 
+// ----------- PDF DOWNLOAD -----------
 function downloadPDF(){
 html2pdf().set({
 margin:5,filename:"Student_Profile.pdf",html2canvas:{scale:2},jsPDF:{unit:'mm',format:'a4'}
-}).from(document.getElementById("profileArea")).save();
+}).from(document.getElementById("receiptBox")).save();
 }
 </script>
+
 </body>
 </html>
