@@ -3,13 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-
-<title>Madrasa Student Manager</title>
-
+<title>Madrasa WhatsApp Submit</title>
 <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Hind Siliguri';}
 body{background:#003d3d;display:flex;justify-content:center;padding:10px;}
@@ -23,46 +20,31 @@ tr:hover{background:#e0f2f1;cursor:pointer;}
 .profile{background:white;margin:10px;padding:15px;border-radius:10px;border:2px solid #004d40;}
 img{width:120px;display:block;margin:auto;margin-bottom:10px;border-radius:8px;}
 button{width:100%;padding:10px;background:#004d40;color:white;border:none;border-radius:6px;margin-top:10px;cursor:pointer;}
-.admin-panel{background:#fff;margin:10px;padding:10px;border-radius:10px;border:2px solid #004d40;}
 </style>
 </head>
-
 <body>
-
 <div class="app">
 
-<!-- SEARCH -->
 <div class="search-box">
 <select id="classSelect"></select>
 <input id="searchInput" placeholder="শুধু ছাত্রের নাম লিখুন">
 </div>
 
-<!-- MULTIPLE MATCH TABLE -->
 <div id="tableArea"></div>
-
-<!-- PROFILE -->
 <div id="profileArea"></div>
-
-<!-- ADMIN PANEL -->
-<div id="adminArea"></div>
 
 </div>
 
 <script>
 let db;
-
-/* ---------- LOAD DB ---------- */
 (async()=>{
 const SQL=await initSqlJs({locateFile:f=>"https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/"+f});
 let res=await fetch("madrasa.db");
 let buf=await res.arrayBuffer();
 db=new SQL.Database(new Uint8Array(buf));
-
 initClasses();
-initAdminPanel();
 })();
 
-/* ---------- LOAD CLASSES ---------- */
 function initClasses(){
 let data=db.exec("SELECT DISTINCT class FROM students")[0].values;
 let sel=document.getElementById("classSelect");
@@ -70,124 +52,74 @@ sel.innerHTML="<option value=''>Select Class</option>";
 data.forEach(c=>{sel.innerHTML+=`<option>${c[0]}</option>`;});
 }
 
-/* ---------- SEARCH ---------- */
 document.getElementById("searchInput").oninput=function(){
 let name=this.value.toLowerCase();
 let cls=document.getElementById("classSelect").value;
 if(!cls || !name)return;
 
-let rows=db.exec("SELECT student_id,name,father_name,class,mobile FROM students")[0].values;
+let rows=db.exec("SELECT student_id,name,father_name,address,class,mobile,image FROM students")[0].values;
 let match=rows.filter(r=>r[3]==cls && r[1].toLowerCase().includes(name));
 renderTable(match);
 };
 
-/* ---------- RENDER TABLE ---------- */
 function renderTable(data){
 let html="<table><tr><th>ID</th><th>Name</th><th>Father</th><th>Class</th><th>Mobile</th></tr>";
 data.forEach(r=>{
-html+=`<tr onclick="showProfile('${r[0]}')">
-<td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td></tr>`;
+html+=`<tr onclick="showProfile('${r[0]}')"><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[4]}</td><td>${r[5]}</td></tr>`;
 });
 html+="</table>";
 document.getElementById("tableArea").innerHTML=html;
 document.getElementById("profileArea").innerHTML="";
 }
 
-/* ---------- SHOW PROFILE ---------- */
 function showProfile(id){
 let r=db.exec(`SELECT * FROM students WHERE student_id='${id}'`)[0].values[0];
 let img="";
 if(r[6]){
 let blob=new Uint8Array(r[6]);
 let base64=btoa(blob.reduce((d,b)=>d+String.fromCharCode(b),''));
-img=`<img src="data:image/jpeg;base64,${base64}">`;
+img=`<img src="data:image/jpeg;base64,${base64}" id="profileImage">`;
 }
-
 document.getElementById("profileArea").innerHTML=`
-<div id="receiptBox" class="profile">
+<div class="profile">
 <h3 style="text-align:center">Student Profile</h3>
 ${img}
 <input id="name" value="${r[1]}">
 <input id="father" value="${r[2]}">
 <input id="address" value="${r[3]}">
+<input id="cls" value="${r[4]}">
 <input id="mobile" value="${r[5]}">
-<button onclick="submitCorrection('${r[0]}','${r[1]}','${r[2]}','${r[3]}','${r[5]}')">✅ Submit Correction</button>
+<button onclick="submitWhatsApp('${r[0]}')">✅ Submit to WhatsApp</button>
 <button onclick="downloadPDF()">🔥 Download PDF</button>
 </div>`;
 window.scrollTo({top:500,behavior:"smooth"});
 }
 
-/* ---------- PDF ---------- */
+function submitWhatsApp(student_id){
+let student = {
+student_id,
+name: document.getElementById("name").value,
+father: document.getElementById("father").value,
+address: document.getElementById("address").value,
+cls: document.getElementById("cls").value,
+mobile: document.getElementById("mobile").value,
+imageBase64: document.getElementById("profileImage") ? document.getElementById("profileImage").src.split(",")[1] : null
+};
+
+fetch("http://localhost:3000/submit-correction",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify(student)
+})
+.then(r=>r.json())
+.then(d=>alert("Sent to WhatsApp ✅"));
+}
+
 function downloadPDF(){
 html2pdf().set({
 margin:5,filename:"Student_Profile.pdf",html2canvas:{scale:2},jsPDF:{unit:'mm',format:'a4'}
-}).from(document.getElementById("receiptBox")).save();
-}
-
-/* ---------- SUBMIT CORRECTION ---------- */
-function submitCorrection(id,oldName,oldFather,oldAddress,oldMobile){
-let newName=document.getElementById("name").value;
-let newFather=document.getElementById("father").value;
-let newAddress=document.getElementById("address").value;
-let newMobile=document.getElementById("mobile").value;
-
-let changes=[];
-if(oldName!=newName) changes.push(["name",oldName,newName]);
-if(oldFather!=newFather) changes.push(["father_name",oldFather,newFather]);
-if(oldAddress!=newAddress) changes.push(["address",oldAddress,newAddress]);
-if(oldMobile!=newMobile) changes.push(["mobile",oldMobile,newMobile]);
-
-changes.forEach(c=>{
-db.run(`CREATE TABLE IF NOT EXISTS correction_requests(
-id INTEGER PRIMARY KEY AUTOINCREMENT,
-student_id TEXT,field TEXT,old_value TEXT,new_value TEXT,status TEXT DEFAULT 'pending'
-)`);
-db.run(`INSERT INTO correction_requests(student_id,field,old_value,new_value,status) VALUES (?,?,?,?,?)`,
-[id,c[0],c[1],c[2],'pending']);
-});
-
-alert("Correction Request Sent ✅");
-initAdminPanel();
-}
-
-/* ---------- ADMIN PANEL ---------- */
-function initAdminPanel(){
-let table="";
-try{
-let res=db.exec("SELECT * FROM correction_requests WHERE status='pending'");
-if(res.length){
-let rows=res[0].values;
-table="<div class='admin-panel'><h3>Admin Correction Requests</h3><table><tr><th>Student ID</th><th>Field</th><th>Old</th><th>New</th><th>Action</th></tr>";
-rows.forEach(r=>{
-table+=`<tr>
-<td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td>
-<td>
-<button onclick="approve(${r[0]},'${r[1]}','${r[2]}','${r[4]}')">Approve</button>
-<button onclick="reject(${r[0]})">Reject</button>
-</td>
-</tr>`;
-});
-table+="</table></div>";
-}
-}catch(e){}
-document.getElementById("adminArea").innerHTML=table;
-}
-
-/* ---------- APPROVE ---------- */
-function approve(id,student_id,field,new_value){
-db.run(`UPDATE students SET ${field}='${new_value}' WHERE student_id='${student_id}'`);
-db.run(`UPDATE correction_requests SET status='approved' WHERE id=${id}`);
-alert("Approved ✅");
-initAdminPanel();
-}
-
-/* ---------- REJECT ---------- */
-function reject(id){
-db.run(`UPDATE correction_requests SET status='rejected' WHERE id=${id}`);
-alert("Rejected ❌");
-initAdminPanel();
+}).from(document.getElementById("profileArea")).save();
 }
 </script>
-
 </body>
 </html>
