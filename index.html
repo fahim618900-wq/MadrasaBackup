@@ -8,47 +8,64 @@
 
 <meta name="theme-color" content="#003d3d" id="theme-color-meta">
 
-<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;600&display=swap" rel="stylesheet">
+<link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
 
 <style>
-*{margin:0;padding:0;box-sizing:border-box;font-family:'Hind Siliguri',sans-serif;}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Hind Siliguri';}
 
-body{
-background:#003d3d;
-display:flex;
-justify-content:center;
-}
+body{background:#003d3d;display:flex;justify-content:center;}
 
-.app-container{
-width:100%;
+.app{
 max-width:412px;
-background:#f5f5f5;
+width:100%;
+background:#f1f1f1;
 min-height:100vh;
-padding-bottom:85px;
+padding-bottom:80px;
 }
 
-.page{
-display:none;
-padding:15px;
+.page{display:none;padding:12px;}
+.page.active{display:block;}
+
+select,input{
+width:100%;
+padding:8px;
+margin:6px 0;
+border-radius:6px;
+border:1px solid #ccc;
 }
 
-.page.active{
-display:block;
-}
-
-.card{
+table{
+width:100%;
+border-collapse:collapse;
 background:white;
-padding:12px;
-margin-bottom:10px;
-border-radius:10px;
-box-shadow:0 2px 6px rgba(0,0,0,.1);
+font-size:14px;
 }
 
-h3{margin-bottom:10px;}
+th,td{
+border:1px solid #ddd;
+padding:6px;
+text-align:left;
+}
 
+th{background:#004d40;color:white;}
+
+.profile{
+background:white;
+padding:10px;
+border-radius:10px;
+}
+
+img{
+width:100px;
+border-radius:8px;
+margin-bottom:10px;
+}
+
+/* NAV */
 nav.bottom-nav{
 position:fixed;
 bottom:0;
@@ -57,205 +74,263 @@ width:calc(100% + 10mm);
 height:66px;
 background:#fff;
 display:flex;
-justify-content:space-between;
+justify-content:space-around;
 align-items:center;
-padding:0 15px;
-border-top:1px solid #eee;
 }
 
 .nav-item{
-display:flex;
-flex-direction:column;
-align-items:center;
-text-decoration:none;
-color:#616161;
+text-align:center;
 font-size:12px;
-width:33%;
+color:#666;
+text-decoration:none;
 }
 
-.nav-icon-box{
-width:56px;
-height:32px;
-display:flex;
-justify-content:center;
-align-items:center;
-border-radius:16px;
-margin-bottom:4px;
-}
-
-.nav-item.active .nav-icon-box{
-background:#cce7d5;
-color:#004d40;
-}
-
-input{
-width:100%;
-padding:8px;
-margin-bottom:10px;
-border-radius:6px;
-border:1px solid #ccc;
-}
+.nav-item.active{color:#004d40;}
 </style>
 </head>
 
 <body>
 
-<div class="app-container">
+<div class="app">
 
-<!-- ================= VIEW STUDENT ================= -->
-<div id="students" class="page active">
-<h3>👨‍🎓 View Students</h3>
-<input id="searchStudent" placeholder="নাম বা ক্লাস লিখুন">
+<!-- ================= VIEW ================= -->
+<div id="view" class="page active">
 
-<div id="studentList"></div>
+<h3>View Students</h3>
+
+<select id="classFilter"></select>
+
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Name</th>
+<th>Class</th>
+<th>Mobile</th>
+<th>Profile</th>
+</tr>
+</thead>
+<tbody id="studentTable"></tbody>
+</table>
+
 </div>
 
 <!-- ================= UNPAID ================= -->
 <div id="unpaid" class="page">
-<h3>❌ Unpaid List</h3>
-<div id="unpaidList"></div>
+<h3>Monthly Unpaid</h3>
+<div id="unpaidData"></div>
 </div>
 
 <!-- ================= PAID ================= -->
 <div id="paid" class="page">
-<h3>✅ Paid List</h3>
-<div id="paidList"></div>
+<h3>Monthly Paid</h3>
+<div id="paidData"></div>
+</div>
+
+<!-- ================= PROFILE ================= -->
+<div id="profile" class="page">
+<div id="profileBox"></div>
 </div>
 
 </div>
 
-<!-- Bottom Nav -->
 <nav class="bottom-nav">
 
-<a href="#" class="nav-item active" data-page="students">
-<div class="nav-icon-box"><i class="fas fa-user-graduate"></i></div>
-<span>Students</span>
-</a>
-
-<a href="#" class="nav-item" data-page="unpaid">
-<div class="nav-icon-box"><i class="fas fa-times-circle"></i></div>
-<span>Unpaid</span>
-</a>
-
-<a href="#" class="nav-item" data-page="paid">
-<div class="nav-icon-box"><i class="fas fa-check-circle"></i></div>
-<span>Paid</span>
-</a>
+<a href="#" class="nav-item active" data="view">Students</a>
+<a href="#" class="nav-item" data="unpaid">Unpaid</a>
+<a href="#" class="nav-item" data="paid">Paid</a>
 
 </nav>
 
 <script>
 let db;
+const PASSWORD="20HikMah25";
 
-/* ---------- PAGE SWITCH ---------- */
-document.querySelectorAll(".nav-item").forEach(btn=>{
-btn.onclick=e=>{
+/* ---------- NAV ---------- */
+document.querySelectorAll(".nav-item").forEach(n=>{
+n.onclick=e=>{
 e.preventDefault();
 
+let page=n.dataset.data;
+
+if(page!="view"){
+let p=prompt("Password Required");
+if(p!==PASSWORD)return;
+}
+
 document.querySelectorAll(".nav-item")
-.forEach(b=>b.classList.remove("active"));
-btn.classList.add("active");
+.forEach(i=>i.classList.remove("active"));
+n.classList.add("active");
 
 document.querySelectorAll(".page")
 .forEach(p=>p.classList.remove("active"));
 
-document.getElementById(
-btn.dataset.page
-).classList.add("active");
+document.getElementById(page).classList.add("active");
+
+if(page=="paid")loadPaid();
+if(page=="unpaid")loadUnpaid();
 };
 });
 
-/* ---------- LOAD DATABASE ---------- */
-async function loadDB(){
-
+/* ---------- LOAD DB ---------- */
+(async()=>{
 const SQL=await initSqlJs({
 locateFile:f=>"https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/"+f
 });
 
-const res=await fetch("madrasa.db");
-const buf=await res.arrayBuffer();
-
+let res=await fetch("madrasa.db");
+let buf=await res.arrayBuffer();
 db=new SQL.Database(new Uint8Array(buf));
 
-loadStudents();
-loadPaid();
-loadUnpaid();
+initStudents();
+})();
+
+/* ---------- INIT STUDENTS ---------- */
+function initStudents(){
+
+let data=db.exec("SELECT * FROM students")[0];
+let classes=[...new Set(data.values.map(v=>v[4]))];
+
+let sel=document.getElementById("classFilter");
+sel.innerHTML="<option>All Class</option>";
+
+classes.forEach(c=>{
+sel.innerHTML+=`<option>${c}</option>`;
+});
+
+renderStudents();
+
+sel.onchange=renderStudents;
 }
 
-loadDB();
+/* ---------- VIEW TABLE ---------- */
+function renderStudents(){
 
-/* ---------- STUDENTS ---------- */
-function loadStudents(){
+let cls=document.getElementById("classFilter").value;
 
-let result=db.exec("SELECT * FROM students");
-let box=document.getElementById("studentList");
-box.innerHTML="";
+let q="SELECT student_id,name,class,mobile,image FROM students";
 
-result[0].values.forEach(r=>{
-box.innerHTML+=`
-<div class="card">
-<b>${r[1]}</b><br>
+let res=db.exec(q)[0].values;
+
+let tbody=document.getElementById("studentTable");
+tbody.innerHTML="";
+
+res.forEach(r=>{
+
+if(cls!="All Class" && r[2]!=cls)return;
+
+tbody.innerHTML+=`
+<tr>
+<td>${r[0]}</td>
+<td>${r[1]}</td>
+<td>${r[2]}</td>
+<td>${r[3]}</td>
+<td><button onclick="profile('${r[0]}')">View</button></td>
+</tr>`;
+});
+}
+
+/* ---------- PROFILE ---------- */
+function profile(id){
+
+let r=db.exec(
+`SELECT * FROM students WHERE student_id='${id}'`
+)[0].values[0];
+
+let img="";
+if(r[6]){
+let blob=new Uint8Array(r[6]);
+let base64=btoa(
+blob.reduce((d,b)=>d+String.fromCharCode(b),'')
+);
+img=`<img src="data:image/jpeg;base64,${base64}">`;
+}
+
+document.getElementById("profileBox").innerHTML=`
+<div class="profile">
+${img}
+<h3>${r[1]}</h3>
+Father: ${r[2]}<br>
 Class: ${r[4]}<br>
 Mobile: ${r[5]}
 </div>`;
-});
+
+showPage("profile");
+}
+
+function showPage(p){
+document.querySelectorAll(".page")
+.forEach(x=>x.classList.remove("active"));
+document.getElementById(p).classList.add("active");
 }
 
 /* ---------- PAID ---------- */
 function loadPaid(){
 
-let result=db.exec(`
-SELECT student_name,month,year
+let res=db.exec(`
+SELECT student_name,month,year,receipt_no
 FROM payments
 `);
 
-let box=document.getElementById("paidList");
-box.innerHTML="";
+let html="<table><tr><th>Name</th><th>Month</th><th>Receipt</th></tr>";
 
-result[0].values.forEach(r=>{
-box.innerHTML+=`
-<div class="card">
-<b>${r[0]}</b><br>
-Month: ${r[1]} / ${r[2]}
-</div>`;
+res[0].values.forEach(r=>{
+html+=`
+<tr>
+<td>${r[0]}</td>
+<td>${r[1]}/${r[2]}</td>
+<td><button onclick="receipt('${r[3]}')">View</button></td>
+</tr>`;
 });
+
+html+="</table>";
+
+document.getElementById("paidData").innerHTML=html;
 }
 
 /* ---------- UNPAID ---------- */
 function loadUnpaid(){
 
-let students=db.exec("SELECT student_id,name,class FROM students")[0].values;
+let students=db.exec(
+"SELECT student_id,name,class FROM students"
+)[0].values;
 
-let paid=db.exec("SELECT DISTINCT student_id FROM payments")[0].values
-.map(v=>v[0]);
+let paid=db.exec(
+"SELECT DISTINCT student_id FROM payments"
+)[0].values.map(v=>v[0]);
 
-let box=document.getElementById("unpaidList");
-box.innerHTML="";
+let html="<table><tr><th>Name</th><th>Class</th></tr>";
 
 students.forEach(s=>{
 if(!paid.includes(s[0])){
-box.innerHTML+=`
-<div class="card">
-<b>${s[1]}</b><br>
-Class: ${s[2]}
-</div>`;
+html+=`
+<tr>
+<td>${s[1]}</td>
+<td>${s[2]}</td>
+</tr>`;
 }
 });
+
+html+="</table>";
+
+document.getElementById("unpaidData").innerHTML=html;
 }
 
-/* ---------- SEARCH ---------- */
-document.getElementById("searchStudent")
-.oninput=function(){
+/* ---------- RECEIPT ---------- */
+function receipt(no){
 
-let text=this.value.toLowerCase();
+let r=db.exec(
+`SELECT * FROM payments WHERE receipt_no='${no}'`
+)[0].values[0];
 
-document.querySelectorAll("#studentList .card")
-.forEach(c=>{
-c.style.display=
-c.innerText.toLowerCase().includes(text)
-?"block":"none";
-});
-};
+alert(
+"Receipt: "+r[6]+
+"\nName: "+r[2]+
+"\nMonth: "+r[7]+"/"+r[8]+
+"\nTotal: "+
+(r[3]+r[4]+r[5])
+);
+}
 </script>
 
 </body>
