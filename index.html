@@ -2,90 +2,77 @@
 <html lang="bn">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 
-<title>Madrasa Manager</title>
+<title>Student Profile & Receipt</title>
 
-<meta name="theme-color" content="#003d3d" id="theme-color-meta">
-
-<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;600&display=swap" rel="stylesheet">
-<link rel="stylesheet"
-href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600&display=swap" rel="stylesheet">
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Hind Siliguri';}
 
-body{background:#003d3d;display:flex;justify-content:center;}
+body{
+background:#003d3d;
+display:flex;
+justify-content:center;
+padding:10px;
+}
 
 .app{
+width:100%;
 max-width:412px;
-width:100%;
-background:#f1f1f1;
-min-height:100vh;
-padding-bottom:80px;
-}
-
-.page{display:none;padding:12px;}
-.page.active{display:block;}
-
-select,input{
-width:100%;
-padding:8px;
-margin:6px 0;
-border-radius:6px;
-border:1px solid #ccc;
-}
-
-table{
-width:100%;
-border-collapse:collapse;
 background:white;
-font-size:14px;
+padding:15px;
+border-radius:12px;
 }
 
-th,td{
-border:1px solid #ddd;
-padding:6px;
-text-align:left;
-}
+h2{text-align:center;margin-bottom:10px;}
 
-th{background:#004d40;color:white;}
-
-.profile{
-background:white;
+input{
+width:100%;
 padding:10px;
+border:1px solid #ccc;
+border-radius:6px;
+margin-bottom:12px;
+}
+
+button{
+padding:10px;
+background:#004d40;
+color:white;
+border:none;
+border-radius:6px;
+cursor:pointer;
+margin-top:10px;
+}
+
+.form{
+border:2px solid #004d40;
+padding:12px;
 border-radius:10px;
 }
 
+.row{
+margin:6px 0;
+font-size:14px;
+}
+
 img{
-width:100px;
+width:120px;
 border-radius:8px;
+display:block;
+margin:auto;
 margin-bottom:10px;
 }
 
-/* NAV */
-nav.bottom-nav{
-position:fixed;
-bottom:0;
-left:-5mm;
-width:calc(100% + 10mm);
-height:66px;
-background:#fff;
-display:flex;
-justify-content:space-around;
-align-items:center;
-}
-
-.nav-item{
+.title{
 text-align:center;
-font-size:12px;
-color:#666;
-text-decoration:none;
+font-weight:bold;
+margin-bottom:8px;
 }
-
-.nav-item.active{color:#004d40;}
 </style>
 </head>
 
@@ -93,151 +80,56 @@ text-decoration:none;
 
 <div class="app">
 
-<!-- ================= VIEW ================= -->
-<div id="view" class="page active">
+<h2>Student Information</h2>
 
-<h3>View Students</h3>
+<input id="search" placeholder="Student ID / Name লিখুন">
 
-<select id="classFilter"></select>
-
-<table>
-<thead>
-<tr>
-<th>ID</th>
-<th>Name</th>
-<th>Class</th>
-<th>Mobile</th>
-<th>Profile</th>
-</tr>
-</thead>
-<tbody id="studentTable"></tbody>
-</table>
+<div id="result"></div>
 
 </div>
-
-<!-- ================= UNPAID ================= -->
-<div id="unpaid" class="page">
-<h3>Monthly Unpaid</h3>
-<div id="unpaidData"></div>
-</div>
-
-<!-- ================= PAID ================= -->
-<div id="paid" class="page">
-<h3>Monthly Paid</h3>
-<div id="paidData"></div>
-</div>
-
-<!-- ================= PROFILE ================= -->
-<div id="profile" class="page">
-<div id="profileBox"></div>
-</div>
-
-</div>
-
-<nav class="bottom-nav">
-
-<a href="#" class="nav-item active" data="view">Students</a>
-<a href="#" class="nav-item" data="unpaid">Unpaid</a>
-<a href="#" class="nav-item" data="paid">Paid</a>
-
-</nav>
 
 <script>
 let db;
-const PASSWORD="20HikMah25";
 
-/* ---------- NAV ---------- */
-document.querySelectorAll(".nav-item").forEach(n=>{
-n.onclick=e=>{
-e.preventDefault();
-
-let page=n.dataset.data;
-
-if(page!="view"){
-let p=prompt("Password Required");
-if(p!==PASSWORD)return;
-}
-
-document.querySelectorAll(".nav-item")
-.forEach(i=>i.classList.remove("active"));
-n.classList.add("active");
-
-document.querySelectorAll(".page")
-.forEach(p=>p.classList.remove("active"));
-
-document.getElementById(page).classList.add("active");
-
-if(page=="paid")loadPaid();
-if(page=="unpaid")loadUnpaid();
-};
-});
-
-/* ---------- LOAD DB ---------- */
+/* ---------- LOAD DATABASE ---------- */
 (async()=>{
+
 const SQL=await initSqlJs({
 locateFile:f=>"https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/"+f
 });
 
 let res=await fetch("madrasa.db");
 let buf=await res.arrayBuffer();
+
 db=new SQL.Database(new Uint8Array(buf));
 
-initStudents();
 })();
 
-/* ---------- INIT STUDENTS ---------- */
-function initStudents(){
+/* ---------- SEARCH ---------- */
+document.getElementById("search")
+.oninput=function(){
 
-let data=db.exec("SELECT * FROM students")[0];
-let classes=[...new Set(data.values.map(v=>v[4]))];
+let txt=this.value.toLowerCase();
 
-let sel=document.getElementById("classFilter");
-sel.innerHTML="<option>All Class</option>";
+if(!txt)return;
 
-classes.forEach(c=>{
-sel.innerHTML+=`<option>${c}</option>`;
-});
+let data=db.exec(
+"SELECT * FROM students"
+)[0].values;
 
-renderStudents();
+let student=data.find(r=>
+r[0].toLowerCase().includes(txt) ||
+r[1].toLowerCase().includes(txt)
+);
 
-sel.onchange=renderStudents;
-}
+if(student)showStudent(student);
+};
 
-/* ---------- VIEW TABLE ---------- */
-function renderStudents(){
-
-let cls=document.getElementById("classFilter").value;
-
-let q="SELECT student_id,name,class,mobile,image FROM students";
-
-let res=db.exec(q)[0].values;
-
-let tbody=document.getElementById("studentTable");
-tbody.innerHTML="";
-
-res.forEach(r=>{
-
-if(cls!="All Class" && r[2]!=cls)return;
-
-tbody.innerHTML+=`
-<tr>
-<td>${r[0]}</td>
-<td>${r[1]}</td>
-<td>${r[2]}</td>
-<td>${r[3]}</td>
-<td><button onclick="profile('${r[0]}')">View</button></td>
-</tr>`;
-});
-}
-
-/* ---------- PROFILE ---------- */
-function profile(id){
-
-let r=db.exec(
-`SELECT * FROM students WHERE student_id='${id}'`
-)[0].values[0];
+/* ---------- SHOW STUDENT ---------- */
+function showStudent(r){
 
 let img="";
+
 if(r[6]){
 let blob=new Uint8Array(r[6]);
 let base64=btoa(
@@ -246,90 +138,42 @@ blob.reduce((d,b)=>d+String.fromCharCode(b),'')
 img=`<img src="data:image/jpeg;base64,${base64}">`;
 }
 
-document.getElementById("profileBox").innerHTML=`
-<div class="profile">
+document.getElementById("result").innerHTML=`
+
+<div id="receiptArea" class="form">
+
+<div class="title">Madrasa Student Profile</div>
+
 ${img}
-<h3>${r[1]}</h3>
-Father: ${r[2]}<br>
-Class: ${r[4]}<br>
-Mobile: ${r[5]}
-</div>`;
 
-showPage("profile");
+<div class="row"><b>ID:</b> ${r[0]}</div>
+<div class="row"><b>Name:</b> ${r[1]}</div>
+<div class="row"><b>Father:</b> ${r[2]}</div>
+<div class="row"><b>Address:</b> ${r[3]}</div>
+<div class="row"><b>Class:</b> ${r[4]}</div>
+<div class="row"><b>Mobile:</b> ${r[5]}</div>
+
+</div>
+
+<button onclick="downloadPDF()">🔥 Download Receipt PDF</button>
+`;
 }
 
-function showPage(p){
-document.querySelectorAll(".page")
-.forEach(x=>x.classList.remove("active"));
-document.getElementById(p).classList.add("active");
-}
+/* ---------- PDF DOWNLOAD ---------- */
+function downloadPDF(){
 
-/* ---------- PAID ---------- */
-function loadPaid(){
+let element=document.getElementById("receiptArea");
 
-let res=db.exec(`
-SELECT student_name,month,year,receipt_no
-FROM payments
-`);
-
-let html="<table><tr><th>Name</th><th>Month</th><th>Receipt</th></tr>";
-
-res[0].values.forEach(r=>{
-html+=`
-<tr>
-<td>${r[0]}</td>
-<td>${r[1]}/${r[2]}</td>
-<td><button onclick="receipt('${r[3]}')">View</button></td>
-</tr>`;
-});
-
-html+="</table>";
-
-document.getElementById("paidData").innerHTML=html;
-}
-
-/* ---------- UNPAID ---------- */
-function loadUnpaid(){
-
-let students=db.exec(
-"SELECT student_id,name,class FROM students"
-)[0].values;
-
-let paid=db.exec(
-"SELECT DISTINCT student_id FROM payments"
-)[0].values.map(v=>v[0]);
-
-let html="<table><tr><th>Name</th><th>Class</th></tr>";
-
-students.forEach(s=>{
-if(!paid.includes(s[0])){
-html+=`
-<tr>
-<td>${s[1]}</td>
-<td>${s[2]}</td>
-</tr>`;
-}
-});
-
-html+="</table>";
-
-document.getElementById("unpaidData").innerHTML=html;
-}
-
-/* ---------- RECEIPT ---------- */
-function receipt(no){
-
-let r=db.exec(
-`SELECT * FROM payments WHERE receipt_no='${no}'`
-)[0].values[0];
-
-alert(
-"Receipt: "+r[6]+
-"\nName: "+r[2]+
-"\nMonth: "+r[7]+"/"+r[8]+
-"\nTotal: "+
-(r[3]+r[4]+r[5])
-);
+html2pdf()
+.set({
+margin:5,
+filename:"Student_Profile.pdf",
+image:{type:'jpeg',quality:1},
+html2canvas:{scale:2},
+jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
+})
+.from(element)
+.save();
 }
 </script>
 
