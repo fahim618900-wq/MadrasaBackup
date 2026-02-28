@@ -1,125 +1,261 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="bn">
 <head>
 <meta charset="UTF-8">
-<title>SQLite DB Viewer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Madrasa Manager</title>
+
+<meta name="theme-color" content="#003d3d" id="theme-color-meta">
+
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
 
 <style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Hind Siliguri',sans-serif;}
+
 body{
-    font-family: Arial;
-    background:#f4f6f9;
-    padding:20px;
+background:#003d3d;
+display:flex;
+justify-content:center;
 }
 
-h2{
-    text-align:center;
+.app-container{
+width:100%;
+max-width:412px;
+background:#f5f5f5;
+min-height:100vh;
+padding-bottom:85px;
 }
 
-button{
-    padding:10px 18px;
-    border:none;
-    background:#007bff;
-    color:white;
-    border-radius:6px;
-    cursor:pointer;
+.page{
+display:none;
+padding:15px;
 }
 
-.table-box{
-    background:white;
-    padding:15px;
-    margin-top:20px;
-    border-radius:8px;
-    box-shadow:0 2px 8px rgba(0,0,0,.1);
+.page.active{
+display:block;
 }
 
-table{
-    width:100%;
-    border-collapse:collapse;
-    margin-top:10px;
+.card{
+background:white;
+padding:12px;
+margin-bottom:10px;
+border-radius:10px;
+box-shadow:0 2px 6px rgba(0,0,0,.1);
 }
 
-th,td{
-    border:1px solid #ddd;
-    padding:8px;
+h3{margin-bottom:10px;}
+
+nav.bottom-nav{
+position:fixed;
+bottom:0;
+left:-5mm;
+width:calc(100% + 10mm);
+height:66px;
+background:#fff;
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:0 15px;
+border-top:1px solid #eee;
 }
 
-th{
-    background:#007bff;
-    color:white;
+.nav-item{
+display:flex;
+flex-direction:column;
+align-items:center;
+text-decoration:none;
+color:#616161;
+font-size:12px;
+width:33%;
+}
+
+.nav-icon-box{
+width:56px;
+height:32px;
+display:flex;
+justify-content:center;
+align-items:center;
+border-radius:16px;
+margin-bottom:4px;
+}
+
+.nav-item.active .nav-icon-box{
+background:#cce7d5;
+color:#004d40;
+}
+
+input{
+width:100%;
+padding:8px;
+margin-bottom:10px;
+border-radius:6px;
+border:1px solid #ccc;
 }
 </style>
 </head>
 
 <body>
 
-<h2>📂 Madrasa Database Structure</h2>
+<div class="app-container">
 
-<button onclick="loadDB()">Load Database</button>
+<!-- ================= VIEW STUDENT ================= -->
+<div id="students" class="page active">
+<h3>👨‍🎓 View Students</h3>
+<input id="searchStudent" placeholder="নাম বা ক্লাস লিখুন">
 
-<div id="output"></div>
+<div id="studentList"></div>
+</div>
+
+<!-- ================= UNPAID ================= -->
+<div id="unpaid" class="page">
+<h3>❌ Unpaid List</h3>
+<div id="unpaidList"></div>
+</div>
+
+<!-- ================= PAID ================= -->
+<div id="paid" class="page">
+<h3>✅ Paid List</h3>
+<div id="paidList"></div>
+</div>
+
+</div>
+
+<!-- Bottom Nav -->
+<nav class="bottom-nav">
+
+<a href="#" class="nav-item active" data-page="students">
+<div class="nav-icon-box"><i class="fas fa-user-graduate"></i></div>
+<span>Students</span>
+</a>
+
+<a href="#" class="nav-item" data-page="unpaid">
+<div class="nav-icon-box"><i class="fas fa-times-circle"></i></div>
+<span>Unpaid</span>
+</a>
+
+<a href="#" class="nav-item" data-page="paid">
+<div class="nav-icon-box"><i class="fas fa-check-circle"></i></div>
+<span>Paid</span>
+</a>
+
+</nav>
 
 <script>
+let db;
+
+/* ---------- PAGE SWITCH ---------- */
+document.querySelectorAll(".nav-item").forEach(btn=>{
+btn.onclick=e=>{
+e.preventDefault();
+
+document.querySelectorAll(".nav-item")
+.forEach(b=>b.classList.remove("active"));
+btn.classList.add("active");
+
+document.querySelectorAll(".page")
+.forEach(p=>p.classList.remove("active"));
+
+document.getElementById(
+btn.dataset.page
+).classList.add("active");
+};
+});
+
+/* ---------- LOAD DATABASE ---------- */
 async function loadDB(){
 
-    const SQL = await initSqlJs({
-        locateFile: file =>
-        "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/" + file
-    });
+const SQL=await initSqlJs({
+locateFile:f=>"https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/"+f
+});
 
-    const response = await fetch("madrasa.db");
-    const buffer = await response.arrayBuffer();
+const res=await fetch("madrasa.db");
+const buf=await res.arrayBuffer();
 
-    const db = new SQL.Database(new Uint8Array(buffer));
+db=new SQL.Database(new Uint8Array(buf));
 
-    let output = document.getElementById("output");
-    output.innerHTML = "";
-
-    // সব table বের করা
-    const tables = db.exec(
-        "SELECT name FROM sqlite_master WHERE type='table'"
-    );
-
-    if(!tables.length){
-        output.innerHTML="No tables found";
-        return;
-    }
-
-    tables[0].values.forEach(t => {
-
-        let tableName = t[0];
-
-        // column info
-        let columns = db.exec(
-            `PRAGMA table_info(${tableName});`
-        );
-
-        let html = `
-        <div class="table-box">
-        <h3>Table: ${tableName}</h3>
-        <table>
-        <tr>
-        <th>Column ID</th>
-        <th>Name</th>
-        <th>Type</th>
-        </tr>
-        `;
-
-        columns[0].values.forEach(col=>{
-            html+=`
-            <tr>
-            <td>${col[0]}</td>
-            <td>${col[1]}</td>
-            <td>${col[2]}</td>
-            </tr>`;
-        });
-
-        html+="</table></div>";
-
-        output.innerHTML+=html;
-    });
+loadStudents();
+loadPaid();
+loadUnpaid();
 }
+
+loadDB();
+
+/* ---------- STUDENTS ---------- */
+function loadStudents(){
+
+let result=db.exec("SELECT * FROM students");
+let box=document.getElementById("studentList");
+box.innerHTML="";
+
+result[0].values.forEach(r=>{
+box.innerHTML+=`
+<div class="card">
+<b>${r[1]}</b><br>
+Class: ${r[4]}<br>
+Mobile: ${r[5]}
+</div>`;
+});
+}
+
+/* ---------- PAID ---------- */
+function loadPaid(){
+
+let result=db.exec(`
+SELECT student_name,month,year
+FROM payments
+`);
+
+let box=document.getElementById("paidList");
+box.innerHTML="";
+
+result[0].values.forEach(r=>{
+box.innerHTML+=`
+<div class="card">
+<b>${r[0]}</b><br>
+Month: ${r[1]} / ${r[2]}
+</div>`;
+});
+}
+
+/* ---------- UNPAID ---------- */
+function loadUnpaid(){
+
+let students=db.exec("SELECT student_id,name,class FROM students")[0].values;
+
+let paid=db.exec("SELECT DISTINCT student_id FROM payments")[0].values
+.map(v=>v[0]);
+
+let box=document.getElementById("unpaidList");
+box.innerHTML="";
+
+students.forEach(s=>{
+if(!paid.includes(s[0])){
+box.innerHTML+=`
+<div class="card">
+<b>${s[1]}</b><br>
+Class: ${s[2]}
+</div>`;
+}
+});
+}
+
+/* ---------- SEARCH ---------- */
+document.getElementById("searchStudent")
+.oninput=function(){
+
+let text=this.value.toLowerCase();
+
+document.querySelectorAll("#studentList .card")
+.forEach(c=>{
+c.style.display=
+c.innerText.toLowerCase().includes(text)
+?"block":"none";
+});
+};
 </script>
 
 </body>
