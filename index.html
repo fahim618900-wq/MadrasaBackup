@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Madrasa Management</title>
+  <link rel="stylesheet" href="/static/app.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-row">
+        <button class="ghost-button" id="menuToggle">MENU</button>
+      </div>
+      <div class="logo">Madrasa</div>
+      <nav class="nav">
+        <button class="nav-button active" data-page="Dashboard">
+          <img class="nav-icon" src="/icons/dashboard.png" alt="" />
+          <span class="nav-label">Dashboard</span>
+        </button>
+        <button class="nav-button" data-page="Register">
+          <img class="nav-icon" src="/icons/register.png" alt="" />
+          <span class="nav-label">Register</span>
+        </button>
+        <button class="nav-button" data-page="Students">
+          <img class="nav-icon" src="/icons/students.png" alt="" />
+          <span class="nav-label">Students</span>
+        </button>
+        <button class="nav-button" data-page="Paid">
+          <img class="nav-icon" src="/icons/paid.png" alt="" />
+          <span class="nav-label">Paid</span>
+        </button>
+        <button class="nav-button" data-page="Unpaid">
+          <img class="nav-icon" src="/icons/unpaid.png" alt="" />
+          <span class="nav-label">Unpaid</span>
+        </button>
+        <button class="nav-button" data-page="Month-wise">
+          <img class="nav-icon" src="/icons/month.png" alt="" />
+          <span class="nav-label">Month-wise</span>
+        </button>
+      </nav>
+    </aside>
+    <div class="divider"></div>
+    <main class="main">
+      <div id="page" class="page"></div>
+    </main>
+  </div>
+
+  <div id="modal" class="modal hidden" aria-hidden="true">
+    <div class="modal-backdrop" data-close="true"></div>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modalTitle">Modal</h3>
+        <button class="ghost-button" id="modalClose">Close</button>
+      </div>
+      <div id="modalBody" class="modal-body"></div>
+      <div id="modalActions" class="modal-actions"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
