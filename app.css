@@ -48,6 +48,12 @@ h2 {
   margin-bottom: 10px;
 }
 
+.sub-title {
+  margin-bottom: 10px;
+  font-size: 16px;
+  color: #194349;
+}
+
 .helper-text {
   color: #d6f0ec;
   font-size: 13px;
@@ -117,6 +123,26 @@ h2 {
   color: #fff;
   padding: 9px 11px;
   font-size: 12px;
+  cursor: pointer;
+}
+
+.soft-btn {
+  background: #0f766e;
+}
+
+.wide-btn {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.inline-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.inline-actions .action-btn {
+  flex: 1;
 }
 
 .table-card {
@@ -159,6 +185,59 @@ th {
   font-size: 11px;
   max-height: 42vh;
   overflow: auto;
+}
+
+.column-editor {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.column-row {
+  display: grid;
+  grid-template-columns: 1fr 100px 42px;
+  gap: 6px;
+  align-items: center;
+}
+
+.col-type {
+  margin-bottom: 0 !important;
+}
+
+.remove-column-btn {
+  border: 0;
+  border-radius: 8px;
+  background: #ef4444;
+  color: #fff;
+  cursor: pointer;
+  height: 38px;
+}
+
+.excel-wrap {
+  border: 1px solid #d8e9e9;
+  border-radius: 10px;
+  overflow: auto;
+  max-height: 32vh;
+}
+
+.excel-table th,
+.excel-table td {
+  min-width: 110px;
+}
+
+.excel-input {
+  width: 100%;
+  border: 1px solid #dbe7e8;
+  border-radius: 6px;
+  padding: 6px;
+  font-size: 12px;
+  margin-bottom: 0 !important;
+}
+
+.note-text {
+  margin-top: 8px;
+  color: #46676d;
+  font-size: 11px;
 }
 
 .summary-list {
@@ -226,4 +305,32 @@ nav.bottom-nav {
 
 .nav-label {
   margin-top: 2px;
+}
+
+@media (max-width: 480px) {
+  .main-content {
+    padding: 12px 10px 0;
+  }
+
+  .status-card {
+    flex-wrap: wrap;
+    align-items: stretch;
+  }
+
+  .status-card .action-btn {
+    width: 100%;
+  }
+
+  .inline-actions {
+    flex-direction: column;
+  }
+
+  .column-row {
+    grid-template-columns: 1fr 1fr 42px;
+  }
+
+  .excel-table th,
+  .excel-table td {
+    min-width: 96px;
+  }
 }
