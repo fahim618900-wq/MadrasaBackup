@@ -42,11 +42,33 @@
 
       <section id="tools" class="tab-panel">
         <h2>টুলস</h2>
+
         <div class="card">
           <p>• টেবিলের কাঁচা SQL দেখতে পারবেন</p>
           <p>• যে কোন টেবিল CSV হিসেবে ডাউনলোড করতে পারবেন</p>
           <button id="downloadCsvBtn" class="action-btn"><i class="fas fa-file-csv"></i> CSV ডাউনলোড</button>
           <pre id="schemaView" class="schema-view"></pre>
+        </div>
+
+        <div class="card">
+          <h3 class="sub-title">Create Table (Excel Style)</h3>
+
+          <label for="newTableName">টেবিল নাম</label>
+          <input id="newTableName" type="text" placeholder="যেমন: student_attendance" />
+
+          <div class="inline-actions">
+            <button id="addColumnBtn" class="action-btn soft-btn"><i class="fas fa-plus"></i> কলাম যোগ</button>
+            <button id="addRowBtn" class="action-btn soft-btn"><i class="fas fa-plus"></i> রো যোগ</button>
+          </div>
+
+          <div id="columnEditor" class="column-editor"></div>
+
+          <div class="excel-wrap">
+            <table id="excelTable" class="excel-table"></table>
+          </div>
+
+          <button id="createTableBtn" class="action-btn wide-btn"><i class="fas fa-database"></i> টেবিল তৈরি + ডেটা সেভ</button>
+          <p class="note-text">খালি রো বাদ যাবে। টাইপ: TEXT / INTEGER / REAL / BLOB / NUMERIC</p>
         </div>
       </section>
 
