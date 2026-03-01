@@ -1,66 +1,124 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="bn">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Madrasa Management</title>
-  <link rel="stylesheet" href="/app.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>মাদ্রাসা DB ভিউয়ার</title>
+
+  <meta name="theme-color" content="#003d3d" id="theme-color-meta" />
+
+  <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="./app.css" />
 </head>
 <body>
-  <div class="app">
-    <aside class="sidebar" id="sidebar">
-      <div class="sidebar-row">
-        <button class="ghost-button" id="menuToggle">MENU</button>
-      </div>
-      <div class="logo">Madrasa</div>
-      <nav class="nav">
-        <button class="nav-button active" data-page="Dashboard">
-          <img class="nav-icon" src="/icons/dashboard.png" alt="" />
-          <span class="nav-label">Dashboard</span>
-        </button>
-        <button class="nav-button" data-page="Register">
-          <img class="nav-icon" src="/icons/register.png" alt="" />
-          <span class="nav-label">Register</span>
-        </button>
-        <button class="nav-button" data-page="Students">
-          <img class="nav-icon" src="/icons/students.png" alt="" />
-          <span class="nav-label">Students</span>
-        </button>
-        <button class="nav-button" data-page="Paid">
-          <img class="nav-icon" src="/icons/paid.png" alt="" />
-          <span class="nav-label">Paid</span>
-        </button>
-        <button class="nav-button" data-page="Unpaid">
-          <img class="nav-icon" src="/icons/unpaid.png" alt="" />
-          <span class="nav-label">Unpaid</span>
-        </button>
-        <button class="nav-button" data-page="Month-wise">
-          <img class="nav-icon" src="/icons/month.png" alt="" />
-          <span class="nav-label">Month-wise</span>
-        </button>
-      </nav>
-    </aside>
-    <div class="divider"></div>
-    <main class="main">
-      <div id="page" class="page"></div>
+  <div class="app-container">
+    <header id="app-header"></header>
+
+    <main class="main-content">
+      <section id="home" class="tab-panel active">
+        <h1>মাদ্রাসা DB ভিউয়ার</h1>
+        <p class="helper-text">এই পেইজ আপনার <code>madrasa.db</code> ফাইল থেকে সব টেবিল, কলাম ও ডেটা মোবাইল ফ্রেন্ডলি ভাবে দেখাবে।</p>
+
+        <div class="card status-card">
+          <div id="dbStatus" class="status-pill loading">লোড হচ্ছে...</div>
+          <button id="reloadBtn" class="action-btn"><i class="fas fa-rotate"></i> রিলোড</button>
+        </div>
+
+        <div class="card">
+          <label for="tableSelect">টেবিল নির্বাচন করুন</label>
+          <select id="tableSelect"></select>
+          <label for="searchInput">ডেটার ভিতরে খুঁজুন</label>
+          <input type="text" id="searchInput" placeholder="নাম, ক্লাস, মোবাইল..." />
+          <div class="meta-row">
+            <span id="tableMeta">টেবিল তথ্য</span>
+          </div>
+        </div>
+
+        <div class="card table-card">
+          <div id="tableWrap" class="table-wrap"></div>
+        </div>
+      </section>
+
+      <section id="tools" class="tab-panel">
+        <h2>টুলস</h2>
+
+        <div class="card">
+          <p>• টেবিলের কাঁচা SQL দেখতে পারবেন</p>
+          <p>• যে কোন টেবিল CSV হিসেবে ডাউনলোড করতে পারবেন</p>
+          <button id="downloadCsvBtn" class="action-btn"><i class="fas fa-file-csv"></i> CSV ডাউনলোড</button>
+          <pre id="schemaView" class="schema-view"></pre>
+        </div>
+
+        <div class="card">
+          <h3 class="sub-title">ক্রিয়েট টেবিল (Excel Style)</h3>
+
+          <label for="newTableName">টেবিল নাম</label>
+          <input id="newTableName" type="text" placeholder="যেমন: student_attendance" />
+
+          <div class="inline-actions">
+            <button id="addColumnBtn" class="action-btn soft-btn"><i class="fas fa-plus"></i> কলাম যোগ</button>
+            <button id="addRowBtn" class="action-btn soft-btn"><i class="fas fa-plus"></i> রো যোগ</button>
+          </div>
+
+          <div id="columnEditor" class="column-editor"></div>
+
+          <div class="excel-wrap">
+            <table id="excelTable" class="excel-table"></table>
+          </div>
+
+          <button id="createTableBtn" class="action-btn wide-btn"><i class="fas fa-database"></i> টেবিল তৈরি + ডেটা সেভ</button>
+          <p class="note-text">খালি কলাম, খালি রো রাখা যাবে। প্রয়োজনে টাইপ TEXT/INTEGER/REAL/BLOB/NUMERIC দিতে পারবেন।</p>
+        </div>
+      </section>
+
+      <section id="quran" class="tab-panel">
+        <h2>ডেটাবেজ সারাংশ</h2>
+        <div id="summaryList" class="summary-list"></div>
+      </section>
+
+      <section id="dua" class="tab-panel">
+        <h2>দ্রুত নির্দেশনা</h2>
+        <div class="card">
+          <p>1) এই ফাইলগুলোর সাথে <code>madrasa.db</code> একই ফোল্ডারে রাখুন।</p>
+          <p>2) লোকালি চালাতে ছোট একটি HTTP সার্ভার ব্যবহার করুন।</p>
+          <p>3) টেবিল নির্বাচন করলে সব রেকর্ড দেখা যাবে।</p>
+        </div>
+      </section>
+
+      <section id="other" class="tab-panel">
+        <h2>অন্যান্য</h2>
+        <div class="card">
+          <p>প্রয়োজনে এই UI-তে এডিট/ডিলিট/ইনসার্ট ফিচারও যোগ করা যাবে।</p>
+        </div>
+      </section>
     </main>
+
+    <nav class="bottom-nav">
+      <a href="#" class="nav-item active" data-tab="home" data-header="#003d3d">
+        <div class="nav-icon-box"><i class="fas fa-home"></i></div>
+        <span class="nav-label">হোম</span>
+      </a>
+      <a href="#" class="nav-item" data-tab="tools" data-header="#2e7d32">
+        <div class="nav-icon-box"><i class="fas fa-th-large"></i></div>
+        <span class="nav-label">টুলস</span>
+      </a>
+      <a href="#" class="nav-item" data-tab="quran" data-header="#005a5a">
+        <div class="nav-icon-box"><i class="fas fa-book-open"></i></div>
+        <span class="nav-label">সারাংশ</span>
+      </a>
+      <a href="#" class="nav-item" data-tab="dua" data-header="#009688">
+        <div class="nav-icon-box"><i class="fas fa-hands"></i></div>
+        <span class="nav-label">গাইড</span>
+      </a>
+      <a href="#" class="nav-item" data-tab="other" data-header="#004d40">
+        <div class="nav-icon-box"><i class="fas fa-user"></i></div>
+        <span class="nav-label">অন্যান্য</span>
+      </a>
+    </nav>
   </div>
 
-  <div id="modal" class="modal hidden" aria-hidden="true">
-    <div class="modal-backdrop" data-close="true"></div>
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3 id="modalTitle">Modal</h3>
-        <button class="ghost-button" id="modalClose">Close</button>
-      </div>
-      <div id="modalBody" class="modal-body"></div>
-      <div id="modalActions" class="modal-actions"></div>
-    </div>
-  </div>
-
-  <div id="toast" class="toast hidden"></div>
-
-  <script src="/app.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.min.js"></script>
+  <script src="./app.js"></script>
 </body>
 </html>
-
