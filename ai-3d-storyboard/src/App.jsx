@@ -1,7 +1,6 @@
 import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, Environment, ContactShadows, Text } from "@react-three/drei";
-import * as THREE from "three";
 import {
   Bot, Play, Pause, Plus, Trash2, Sparkles, Volume2, Download, RotateCcw,
   Film, ChevronDown, Settings2, CircleStop, Camera, Mic2
@@ -144,20 +143,34 @@ function App(){
     setClips(cs=>cs.filter((_,i)=>i!==selected));
     setSelected(Math.max(0,selected-1));
   }
-  async function autoDirector(){
+  function autoDirector(){
     if(!prompt.trim())return;
-    setStatus("AI director parsing...");
-    try{
-      const res=await fetch("/api/parse-script",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt})});
-      if(!res.ok)throw new Error("API unavailable");
-      const data=await res.json();
-      if(data.clips?.length){setClips(data.clips);setSelected(0);setElapsed(0);setStatus(`${data.clips.length} scenes generated`);}
-    }catch{
-      setStatus("Parser API unavailable — using local parser");
-      const words=prompt.split(/(?:,| then | and then )/i).map(s=>s.trim()).filter(Boolean);
-      const fallback=words.map((s,i)=>({id:crypto.randomUUID(),name:`Scene ${i+1}`,duration:3.5,character:/boy/i.test(s)?"Boy":/girl/i.test(s)?"Girl":/alien/i.test(s)?"Alien":"Robot",action:/wave/i.test(s)?"wave":/walk/i.test(s)?"walk":/jump/i.test(s)?"jump":/say|hello|talk/i.test(s)?"talk":"idle",dialogue:/say|hello|talk/i.test(s)?s:"",camera:i%2?"close":"wide"}));
-      setClips(fallback.length?fallback:initialClips);setSelected(0);setElapsed(0);
-    }
+    setStatus("Building storyboard locally...");
+    const names=["Robot","Boy","Girl","Alien"];
+    const parts=prompt
+      .replace(/\bthen\b/gi,"|")
+      .replace(/\band then\b/gi,"|")
+      .replace(/[.!?]+/g,"|")
+      .split("|")
+      .map(s=>s.trim())
+      .filter(Boolean);
+    const generated=parts.map((s,i)=>{
+      const character=names.find(n=>new RegExp("\\b"+n+"\\b","i").test(s)) || (i%2?"Boy":"Robot");
+      const action=/wave|waves|waving/i.test(s)?"wave"
+        :/walk|walks|walking/i.test(s)?"walk"
+        :/jump|jumps|jumping/i.test(s)?"jump"
+        :/point|points|pointing/i.test(s)?"point"
+        :/say|says|talk|talks|speak|speaks|hello|hi/i.test(s)?"talk":"idle";
+      const camera=/close|close-up/i.test(s)?"close":/pan left/i.test(s)?"pan-left":/pan right/i.test(s)?"pan-right":i%2?"close":"wide";
+      const dialogue=/say|says|talk|talks|speak|speaks|hello|hi/i.test(s)
+        ? s.replace(new RegExp("^"+character+"\\s*[:,-]?\\s*","i"),"")
+        : "";
+      return {id:crypto.randomUUID(),name:`Scene ${i+1}`,duration:Math.max(2.5,Math.min(8,2.5+s.length/22)),character,action,dialogue,camera};
+    });
+    setClips(generated.length?generated:initialClips);
+    setSelected(0);
+    setElapsed(0);
+    setStatus(`${generated.length||initialClips.length} scenes generated locally`);
   }
   function speak(){
     if(!clip?.dialogue)return;
